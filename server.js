@@ -21,7 +21,10 @@ let currentMatrix = new Array(TOTAL_BOXES).fill(0);
 // store which color toggled each box
 let colorMatrix = new Array(TOTAL_BOXES).fill(null);
 
-app.use(express.static(__dirname));
+app.use(express.static(__dirname, { setHeaders: (res, path) => {
+	if (path.endsWith(".js"))  res.setHeader("Content-Type", "application/javascript");
+	if (path.endsWith(".css")) res.setHeader("Content-Type", "text/css");
+}}));
 
 
 
