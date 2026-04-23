@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let PORT = 3000;
+let PORT = process.env.PORT || 3000;
 const app = express();
 const server = app.listen(PORT, () => {
 	console.log(`Server is running on http://localhost:${PORT}`);
@@ -14,7 +14,7 @@ const server = app.listen(PORT, () => {
 
 const wss = new WebSocketServer({ server });
 
-const TOTAL_BOXES = parseInt(process.env.TOTAL_BOXES);
+const TOTAL_BOXES = parseInt(process.env.TOTAL_BOXES) || 2610;
 const clients = new Set();
 let currentMatrix = new Array(TOTAL_BOXES).fill(0);
 
