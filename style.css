@@ -1,0 +1,34 @@
+:root {
+	box-sizing: border-box;
+	margin: 0px;
+	padding: 0px;
+}
+
+body {
+	font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+	background-color: #303030;
+	display: flex;
+	justify-content: center;
+}
+
+.main {
+	background-color: #505050;
+	margin: 4rem;
+	width: 90vw;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(4rem, 1fr));
+	grid-auto-rows: 4rem;
+}
+
+.checkbox {
+	border: 0.3px solid #303030;
+	transition: background-color 0.1s ease;	
+}
+
+.checkbox:active {
+	scale: 0.98;
+	background-color: #454545;
+}
+.checkbox.toggled {
+		background-color: #707070;
+}
