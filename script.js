@@ -19,6 +19,16 @@ function canSend(index) {
 	return false;
 }
 
+function showSkeleton() {
+	container.innerHTML = "";
+	const count = Math.floor((window.innerWidth * 0.9) / parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--box-size")) * 8);
+	for (let i = 0; i < count; i++) {
+		const div = document.createElement("div");
+		div.classList.add("checkbox", "skeleton");
+		container.appendChild(div);
+	}
+}
+
 function createBoxes(count) {
 	container.innerHTML = "";
 	for (let i = 0; i < count; i++) {
@@ -52,6 +62,7 @@ function connectWebSocket() {
 
 	ws.onopen = () => {
 		console.log("Connected to server");
+		showSkeleton();
 	};
 
 	ws.onmessage = (event) => {
@@ -99,4 +110,5 @@ container.addEventListener("click", (event) => {
 	ws.send(JSON.stringify({ type: "toggle", index, value: newValue }));
 });
 
+showSkeleton();
 connectWebSocket();
