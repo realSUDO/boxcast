@@ -21,15 +21,11 @@ function canSend(index) {
 
 function showSkeleton() {
 	container.innerHTML = "";
-	const count = Math.floor((window.innerWidth * 0.9) / parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--box-size")) * 8);
-	for (let i = 0; i < count; i++) {
-		const div = document.createElement("div");
-		div.classList.add("checkbox", "skeleton");
-		container.appendChild(div);
-	}
+	container.classList.add("skeleton");
 }
 
 function createBoxes(count) {
+	container.classList.remove("skeleton");
 	container.innerHTML = "";
 	for (let i = 0; i < count; i++) {
 		let checkbox = document.createElement("div");

@@ -49,7 +49,6 @@ body {
 	0%   { background-position: 200% 0; }
 	100% { background-position: -200% 0; }
 }
-
 .head {
 	font-family: "Bitcount Grid Double", monospace;
 	color: #a0a0a0;
