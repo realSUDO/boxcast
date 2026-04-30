@@ -1,50 +1,38 @@
 import express from "express";
-import { WebSocketServer, WebSocket } from "ws";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let PORT = process.env.PORT || 3000;
-const app = express();
-const server = app.listen(PORT, () => {
-	console.log(`Server is running on http://localhost:${PORT}`);
-});
-
-const wss = new WebSocketServer({ server });
-
+const PORT = process.env.PORT || 3000;
 const TOTAL_BOXES = parseInt(process.env.TOTAL_BOXES) || 2610;
-const clients = new Set();
+
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer);
+
+app.use(express.static(__dirname, {
+	setHeaders: (res, path) => {
+		if (path.endsWith(".js"))  res.setHeader("Content-Type", "application/javascript");
+		if (path.endsWith(".css")) res.setHeader("Content-Type", "text/css");
+	}
+}));
+
 let currentMatrix = new Array(TOTAL_BOXES).fill(0);
-
-// store which color toggled each box
 let colorMatrix = new Array(TOTAL_BOXES).fill(null);
-
-app.use(express.static(__dirname, { setHeaders: (res, path) => {
-	if (path.endsWith(".js"))  res.setHeader("Content-Type", "application/javascript");
-	if (path.endsWith(".css")) res.setHeader("Content-Type", "text/css");
-}}));
-
-
-
-
-
-
 
 // ----------------------- Color generation logic -----------------------
 
-// generates greyish colors..
 let colorIndex = 0;
 function generateUserColor() {
-	const hue = (colorIndex * 137.5) % 360; // golden angle spread
+	const hue = (colorIndex * 137.5) % 360;
 	colorIndex++;
 	const s = 30 + (colorIndex % 3) * 5;
 	const l = 78 + (colorIndex % 3) * 3;
 	return hslToHex(hue, s, l);
-	
-
-	// this one is..  HSL: low saturation (30-40%), high lightness (75-85%) → muted pastels
 }
 
 function hslToHex(h, s, l) {
@@ -58,51 +46,41 @@ function hslToHex(h, s, l) {
 	return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-// ----------------------- ws logic -----------------------
+// ----------------------- socket.io logic -----------------------
 
-wss.on("connection", (ws) => {
+io.on("connection", (socket) => {
 	console.log("new client aa gya");
-	clients.add(ws);
-	ws.userColor = generateUserColor();
+	socket.userColor = generateUserColor();
 
-	ws.send(
-		JSON.stringify({
-			type: "init",
-			totalBoxes: TOTAL_BOXES,
-			matrix: currentMatrix,
-			colorMatrix: colorMatrix,
-			yourColor: ws.userColor,
-		}),
-	);
+	socket.emit("init", {
+		totalBoxes: TOTAL_BOXES,
+		matrix: currentMatrix,
+		colorMatrix: colorMatrix,
+		yourColor: socket.userColor,
+	});
 
-	ws.on("message", (message) => {
+	socket.on("toggle", (data) => {
 		try {
-			const data = JSON.parse(message);
-			if (data.type === "toggle") {
-				currentMatrix[data.index] = data.value;
-				colorMatrix[data.index] = data.value === 1 ? ws.userColor : null;
+			currentMatrix[data.index] = data.value;
+			colorMatrix[data.index] = data.value === 1 ? socket.userColor : null;
 
-				const broadcastMessage = JSON.stringify({
-					type: "update",
-					index: data.index,
-					value: data.value,
-					color: colorMatrix[data.index],
-				});
+			socket.broadcast.emit("update", {
+				index: data.index,
+				value: data.value,
+				color: colorMatrix[data.index],
+			});
 
-				clients.forEach((client) => {
-					if (client !== ws && client.readyState === WebSocket.OPEN) {
-						client.send(broadcastMessage);
-					}
-				});
-				console.log(`Box ${data.index} toggled to : ${data.value}`);
-			}
+			console.log(`Box ${data.index} toggled to : ${data.value}`);
 		} catch (error) {
 			console.error("Error occured : ", error);
 		}
 	});
 
-	ws.on('close', () => {
+	socket.on("disconnect", () => {
 		console.log("client chala gya");
-		clients.delete(ws);
 	});
+});
+
+httpServer.listen(PORT, () => {
+	console.log(`Server is running on http://localhost:${PORT}`);
 });

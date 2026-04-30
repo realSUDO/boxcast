@@ -3,11 +3,9 @@ let container = document.querySelector(".main");
 let matrix = [];
 let colorMatrix = [];
 let myColor = null;
-let ws = null;
+let socket = null;
 
-// jittering for .. load (if there) 
-
-const THROTTLE_MS = 50; // max one send per 50ms per box
+const THROTTLE_MS = 50;
 const lastSent = {};
 
 function canSend(index) {
@@ -52,59 +50,48 @@ function syncAllVisuals() {
 	}
 }
 
-function connectWebSocket() {
-	const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-	ws = new WebSocket(`${protocol}://${window.location.host}`);
+function connectSocket() {
+	socket = io();
 
-	ws.onopen = () => {
+	socket.on("connect", () => {
 		console.log("Connected to server");
 		showSkeleton();
-	};
+	});
 
-	ws.onmessage = (event) => {
-		const data = JSON.parse(event.data);
+	socket.on("init", (data) => {
+		myColor = data.yourColor;
+		matrix = data.matrix;
+		colorMatrix = data.colorMatrix;
+		createBoxes(data.totalBoxes);
+		syncAllVisuals();
+		console.log(`Initialized with ${data.totalBoxes} boxes, color: ${myColor}`);
+	});
 
-		if (data.type === "init") {
-			myColor = data.yourColor;
-			matrix = data.matrix;
-			colorMatrix = data.colorMatrix;
-			createBoxes(data.totalBoxes);
-			syncAllVisuals();
-			console.log(`Initialized with ${data.totalBoxes} boxes, color: ${myColor}`);
-		}
+	socket.on("update", (data) => {
+		matrix[data.index] = data.value;
+		colorMatrix[data.index] = data.color;
+		updateBoxVisual(data.index, data.value, data.color);
+	});
 
-		if (data.type === "update") {
-			matrix[data.index] = data.value;
-			colorMatrix[data.index] = data.color;
-			updateBoxVisual(data.index, data.value, data.color);
-		}
-	};
-
-	ws.onerror = (error) => {
-		console.error("WebSocket error : ", error);
-	};
-
-	ws.onclose = () => {
-		console.log("Disconnected, reconnecting in 3 seconds...");
-		setTimeout(connectWebSocket, 3000);
-	};
+	socket.on("disconnect", () => {
+		console.log("Disconnected, reconnecting...");
+	});
 }
 
 container.addEventListener("click", (event) => {
 	let clickedBox = event.target.closest(".checkbox");
-	if (!clickedBox || !ws || ws.readyState !== WebSocket.OPEN) return;
+	if (!clickedBox || !socket || !socket.connected) return;
 
 	let index = parseInt(clickedBox.dataset.index);
-	if (!canSend(index)) return; // jitter throttle
+	if (!canSend(index)) return;
 
 	let newValue = matrix[index] === 1 ? 0 : 1;
 	matrix[index] = newValue;
 	colorMatrix[index] = newValue === 1 ? myColor : null;
 
 	updateBoxVisual(index, newValue, colorMatrix[index]);
-
-	ws.send(JSON.stringify({ type: "toggle", index, value: newValue }));
+	socket.emit("toggle", { index, value: newValue });
 });
 
 showSkeleton();
-connectWebSocket();
+connectSocket();
