@@ -131,11 +131,17 @@ function connect() {
 
 // ----------------------- Click handler -----------------------
 
+const lastToggled = {};
+const TOGGLE_THROTTLE = 300;
+
 container.addEventListener("click", (e) => {
 	const box = e.target.closest(".checkbox");
 	if (!box || !socket?.connected) return;
 
 	const index = parseInt(box.dataset.index);
+	const now = Date.now();
+	if (lastToggled[index] && now - lastToggled[index] < TOGGLE_THROTTLE) return;
+	lastToggled[index] = now;
 	const current = toggledBoxes[index];
 	const newValue = current ? 0 : 1;
 	const newColor = newValue === 1 ? myColor : null;
