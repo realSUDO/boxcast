@@ -1,40 +1,47 @@
-let container = document.querySelector(".main");
+const container = document.querySelector(".main");
 
-let matrix = [];
-let colorMatrix = [];
+// Sparse state: only toggled boxes stored
+const toggledBoxes = {}; // { index: { value, color } }
+
 let myColor = null;
+let totalBoxes = 0;
+let chunkSize = 1500;
+let renderedCount = 0;
+let clientCount = 1;
 let socket = null;
+let sentinel = null;
+let observer = null;
 
-const THROTTLE_MS = 50;
-const lastSent = {};
+// ----------------------- Jitter -----------------------
 
-function canSend(index) {
-	const now = Date.now();
-	if (!lastSent[index] || now - lastSent[index] >= THROTTLE_MS) {
-		lastSent[index] = now;
-		return true;
-	}
-	return false;
+function jitterDelay() {
+	const max = Math.min(clientCount * 2, 2000);
+	return Math.random() * max;
 }
+
+// ----------------------- DOM helpers -----------------------
 
 function showSkeleton() {
 	container.innerHTML = "";
 	container.classList.add("skeleton");
 }
 
-function createBoxes(count) {
-	container.classList.remove("skeleton");
-	container.innerHTML = "";
-	for (let i = 0; i < count; i++) {
-		let checkbox = document.createElement("div");
-		checkbox.classList.add("checkbox");
-		checkbox.dataset.index = i;
-		container.appendChild(checkbox);
+function createBox(index) {
+	const box = document.createElement("div");
+	box.classList.add("checkbox");
+	box.dataset.index = index;
+	const state = toggledBoxes[index];
+	if (state) {
+		box.classList.add("toggled");
+		box.style.backgroundColor = state.color || "";
 	}
+	return box;
 }
 
 function updateBoxVisual(index, value, color) {
-	const box = container.children[index];
+	// Only update if box is currently rendered
+	const box = container.querySelector(`[data-index="${index}"]`);
+	if (!box) return;
 	if (value === 1) {
 		box.classList.add("toggled");
 		box.style.backgroundColor = color || "";
@@ -44,54 +51,105 @@ function updateBoxVisual(index, value, color) {
 	}
 }
 
-function syncAllVisuals() {
-	for (let i = 0; i < matrix.length; i++) {
-		updateBoxVisual(i, matrix[i], colorMatrix[i]);
+// ----------------------- Chunked rendering -----------------------
+
+function appendChunk(start, count) {
+	const frag = document.createDocumentFragment();
+	for (let i = start; i < start + count; i++) {
+		frag.appendChild(createBox(i));
+	}
+	// Remove old sentinel before appending
+	if (sentinel) sentinel.remove();
+	container.appendChild(frag);
+	renderedCount = start + count;
+
+	// Re-attach sentinel if more boxes remain
+	if (renderedCount < totalBoxes) {
+		sentinel = document.createElement("div");
+		sentinel.className = "sentinel";
+		container.appendChild(sentinel);
+		observer.observe(sentinel);
 	}
 }
 
-function connectSocket() {
-	socket = io();
+function setupObserver() {
+	observer = new IntersectionObserver((entries) => {
+		if (!entries[0].isIntersecting) return;
+		observer.unobserve(sentinel);
+		socket.emit("fetch-chunk", { start: renderedCount });
+	}, { rootMargin: "200px" });
+}
 
-	socket.on("connect", () => {
-		console.log("Connected to server");
-		showSkeleton();
+// ----------------------- Socket -----------------------
+
+function connect() {
+	socket = io({
+		reconnection: true,
+		reconnectionAttempts: Infinity,
+		reconnectionDelay: 500,         // start at 500ms
+		reconnectionDelayMax: 10000,    // cap at 10s
+		randomizationFactor: 0.7,       // ±70% jitter on each delay
 	});
 
-	socket.on("init", (data) => {
-		myColor = data.yourColor;
-		matrix = data.matrix;
-		colorMatrix = data.colorMatrix;
-		createBoxes(data.totalBoxes);
-		syncAllVisuals();
-		console.log(`Initialized with ${data.totalBoxes} boxes, color: ${myColor}`);
+	socket.on("connect", showSkeleton);
+
+	socket.on("client-count", (count) => {
+		clientCount = count;
 	});
 
-	socket.on("update", (data) => {
-		matrix[data.index] = data.value;
-		colorMatrix[data.index] = data.color;
-		updateBoxVisual(data.index, data.value, data.color);
+	socket.on("init", ({ totalBoxes: total, chunkSize: cs, yourColor, chunk }) => {
+		totalBoxes = total;
+		chunkSize = cs;
+		myColor = yourColor;
+
+		// Apply first chunk state to sparse map
+		for (const { index, color } of chunk) {
+			toggledBoxes[index] = { value: 1, color };
+		}
+
+		container.classList.remove("skeleton");
+		container.innerHTML = "";
+		renderedCount = 0;
+
+		setupObserver();
+		appendChunk(0, Math.min(chunkSize, totalBoxes));
 	});
 
-	socket.on("disconnect", () => {
-		console.log("Disconnected, reconnecting...");
+	socket.on("chunk", ({ start, chunk }) => {
+		for (const { index, color } of chunk) {
+			toggledBoxes[index] = { value: 1, color };
+		}
+		appendChunk(start, Math.min(chunkSize, totalBoxes - start));
+	});
+
+	socket.on("update", ({ index, value, color }) => {
+		if (value === 1) toggledBoxes[index] = { value, color };
+		else delete toggledBoxes[index];
+		updateBoxVisual(index, value, color);
 	});
 }
 
-container.addEventListener("click", (event) => {
-	let clickedBox = event.target.closest(".checkbox");
-	if (!clickedBox || !socket || !socket.connected) return;
+// ----------------------- Click handler -----------------------
 
-	let index = parseInt(clickedBox.dataset.index);
-	if (!canSend(index)) return;
+container.addEventListener("click", (e) => {
+	const box = e.target.closest(".checkbox");
+	if (!box || !socket?.connected) return;
 
-	let newValue = matrix[index] === 1 ? 0 : 1;
-	matrix[index] = newValue;
-	colorMatrix[index] = newValue === 1 ? myColor : null;
+	const index = parseInt(box.dataset.index);
+	const current = toggledBoxes[index];
+	const newValue = current ? 0 : 1;
+	const newColor = newValue === 1 ? myColor : null;
 
-	updateBoxVisual(index, newValue, colorMatrix[index]);
-	socket.emit("toggle", { index, value: newValue });
+	// Optimistic update
+	if (newValue === 1) toggledBoxes[index] = { value: 1, color: newColor };
+	else delete toggledBoxes[index];
+	updateBoxVisual(index, newValue, newColor);
+
+	// Jittered emit
+	setTimeout(() => {
+		socket.emit("toggle", { index, value: newValue });
+	}, jitterDelay());
 });
 
 showSkeleton();
-connectSocket();
+connect();
