@@ -3,19 +3,72 @@
 
 <head>
 	<meta charset="UTF-8" />
-	<link rel="stylesheet" href="style.css" />
+	<link rel="stylesheet" href="style/style.css" />
+	<link rel="stylesheet" href="style/login.css">
 	<link rel="icon" href="favicon.png" />
 	<title>BoxCast</title>
 </head>
 
 <body>
-<div class="head">
-Sudo's Boxcast
-</div>
-	<div class="main skeleton">
+
+	<nav class="navbar">
+		<button class="sidebar-toggle" id="sidebarToggle">☰</button>
+		<span class="navbar-title">Sudo's Boxcast</span>
+		<div class="navbar-right">
+			<span class="score-display" id="scoreDisplay">Score: 0</span>
+			<button class="login-btn" id="loginBtn">Login</button>
+		</div>
+	</nav>
+
+	<!-- Login Modal -->
+	<div class="login-overlay" id="loginOverlay">
+		<div class="login-modal">
+			<button class="login-modal-close" id="loginClose">✕</button>
+			<h2 class="login-heading">Welcome back</h2>
+			<form class="login-form" id="loginForm">
+				<input class="login-input" id="loginEmail" type="email" placeholder="Email" autocomplete="off" required />
+				<input class="login-input" id="loginPassword" type="password" placeholder="Password" required />
+				<p class="login-error" id="loginError"></p>
+				<button class="login-submit" type="submit" id="loginSubmit">Login</button>
+			</form>
+			<p class="login-footer">Don't have an account? <a href="#" id="showSignup">Sign up</a></p>
+		</div>
 	</div>
+
+	<!-- Signup Modal -->
+	<div class="login-overlay" id="signupOverlay">
+		<div class="login-modal">
+			<button class="login-modal-close" id="signupClose">✕</button>
+			<h2 class="login-heading">Create account</h2>
+			<form class="login-form" id="signupForm">
+				<input class="login-input" id="signupName" type="text" placeholder="Name (optional)" autocomplete="off" />
+				<input class="login-input" id="signupEmail" type="email" placeholder="Email" required />
+				<input class="login-input" id="signupPassword" type="password" placeholder="Password" required />
+				<p class="login-error" id="signupError"></p>
+				<button class="login-submit" type="submit" id="signupSubmit">Sign up</button>
+			</form>
+			<p class="login-footer">Already have an account? <a href="#" id="showLogin">Login</a></p>
+		</div>
+	</div>
+
+	<div class="sidebar" id="sidebar">
+		<button class="sidebar-close" id="sidebarClose">✕</button>
+		<p class="sidebar-heading">BoxCast</p>
+		<p class="sidebar-stat" id="connectedCount">Connected: —</p>
+		<div class="leaderboard">
+			<p class="leaderboard-title">Leaderboard</p>
+			<ol class="leaderboard-list" id="leaderboardList"></ol>
+		</div>
+		<div class="guest-prompt" id="guestPrompt">
+			<p>Save your score</p>
+			<button class="guest-login-btn" id="guestLoginBtn">Sign in</button>
+		</div>
+	</div>
+	<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+	<div class="main skeleton"></div>
+
 </body>
 <script src="/socket.io/socket.io.js"></script>
 <script src="script.js"></script>
 </html>
-
