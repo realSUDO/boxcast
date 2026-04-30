@@ -8,6 +8,7 @@ let totalBoxes = 0;
 let chunkSize = 1500;
 let renderedCount = 0;
 let clientCount = 1;
+let localScore = 0;
 let socket = null;
 let sentinel = null;
 let observer = null;
@@ -109,7 +110,8 @@ function connect() {
 		chunkSize = cs;
 		myColor = yourColor;
 
-		updateScore(score);
+		localScore = score || 0;
+		updateScore(localScore);
 
 		for (const { index, color } of chunk) {
 			toggledBoxes[index] = { value: 1, color };
@@ -124,6 +126,7 @@ function connect() {
 	});
 
 	socket.on("score", (s) => {
+		localScore = s;
 		updateScore(s);
 	});
 
@@ -176,6 +179,10 @@ container.addEventListener("click", (e) => {
 	if (newValue === 1) toggledBoxes[index] = { value: 1, color: newColor };
 	else delete toggledBoxes[index];
 	updateBoxVisual(index, newValue, newColor);
+
+	// Optimistic score — instant feedback
+	localScore = Math.max(0, localScore + (newValue === 1 ? 10 : -10));
+	updateScore(localScore);
 
 	// Jittered emit
 	setTimeout(() => {
