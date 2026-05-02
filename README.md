@@ -3,6 +3,7 @@
 A real-time collaborative checkbox grid. Every connected user sees the same wall of boxes - click one and it lights up for everyone instantly.
 
 **Demo video:** https://youtu.be/PqxEnsy6eI0
+
 **Live Link:** https://boxcast.sudohq.me
 
 ---
