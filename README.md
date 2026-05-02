@@ -7,6 +7,15 @@ A real-time collaborative checkbox grid. Every connected user sees the same wall
 
 ---
 
+<table>
+  <tr>
+    <td><img width="350" height="196" alt="image" src="https://github.com/user-attachments/assets/a95f7f26-cc3a-4944-92fa-d85ae2e2f528" /></td>
+    <td><img width="350" height="196" alt="image" src="https://github.com/user-attachments/assets/c70aa015-2b1b-4088-aa85-5fba0726d451" /></td>
+    <td><img width="350" height="196" alt="image" src="https://github.com/user-attachments/assets/af3b17b2-745b-4c50-8fd8-6d8635335064" /></td>
+  </tr>
+</table>
+
+
 ## Features
 
 - Up to **1,000,000** checkboxes, lazy-loaded in chunks via infinite scroll
